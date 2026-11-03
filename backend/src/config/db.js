@@ -1,6 +1,7 @@
 const mysql = require('mysql2/promise');
 const dotenv = require('dotenv');
 const path = require('path');
+const fs = require('fs');
 
 dotenv.config({ path: path.resolve(__dirname, '../../.env') });
 
@@ -26,6 +27,27 @@ function positiveIntegerFromEnv(key) {
   return value;
 }
 
+function getSslConfig() {
+  const sslValue = process.env.DB_SSL?.trim().toLowerCase();
+  if (!sslValue || sslValue === 'false') {
+    return undefined;
+  }
+  if (sslValue !== 'true') {
+    throw new Error('DB_SSL in backend/.env must be either true or false');
+  }
+
+  const ca = process.env.DB_SSL_CA
+    ? process.env.DB_SSL_CA.replace(/\\n/g, '\n')
+    : process.env.DB_SSL_CA_PATH
+      ? fs.readFileSync(path.resolve(process.env.DB_SSL_CA_PATH), 'utf8')
+      : undefined;
+
+  return {
+    rejectUnauthorized: true,
+    ...(ca ? { ca } : {})
+  };
+}
+
 // Create connection pool for high concurrency and resilient database interactions
 const pool = mysql.createPool({
   host: process.env.DB_HOST,
@@ -38,6 +60,7 @@ const pool = mysql.createPool({
   queueLimit: 0,
   enableKeepAlive: true,
   keepAliveInitialDelay: 10000,
+  ssl: getSslConfig(),
   timezone: 'Z',
   dateStrings: true
 });

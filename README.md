@@ -135,18 +135,9 @@ pulseapi/
 
 ## Windows 11 / VS Code / MySQL Workbench Setup
 
-### Step 1: Database Setup in MySQL Workbench
+### Step 1: Prepare a MySQL Database
 
-1. Open **MySQL Workbench** on Windows 11 and connect to your local MySQL 8 instance (default: `localhost:3306`).
-2. Open a new SQL Query tab (`Ctrl + T`).
-3. Open `backend/database/schema.sql` (or paste its contents) and click the **Lightning Bolt** execution icon (`Ctrl + Shift + Enter`).
-4. This creates the database `pulseapi_db` and all 6 tables:
-   - `users`
-   - `monitors`
-   - `monitor_checks`
-   - `incidents`
-   - `status_pages`
-   - `status_page_monitors`
+Create or select the database in your MySQL provider before running the seeder. The schema file creates tables in the database selected by the configured MySQL connection; it does not create or switch databases. For Aiven, use the database name shown in the service connection details (commonly `defaultdb`).
 
 ### Step 2: Backend Configuration & Run
 
@@ -158,23 +149,27 @@ pulseapi/
    ```powershell
    Copy-Item .env.example .env
    ```
-3. Edit `.env` with your MySQL password:
+3. Edit `.env` with the connection details for the database you prepared:
    ```ini
    PORT=5000
-   DB_HOST=127.0.0.1
-   DB_PORT=3306
-   DB_USER=root
-   DB_PASSWORD=your_actual_mysql_password
-   DB_NAME=pulseapi_db
+   DB_HOST=your_mysql_host
+   DB_PORT=your_mysql_port
+   DB_USER=your_mysql_user
+   DB_PASSWORD=your_mysql_password
+   DB_NAME=defaultdb
+   DB_CONNECTION_LIMIT=10
+   DB_SSL=true
+   DB_SSL_CA=-----BEGIN CERTIFICATE-----\n...\n-----END CERTIFICATE-----
    JWT_SECRET=super_secret_jwt_key_pulseapi_production_grade_32chars!
    CRON_SCHEDULE=* * * * *
    CLIENT_URL=http://localhost:5173
    ```
+   For local MySQL, use its host, port, user, password, and database name, and set `DB_SSL=false`. For Aiven, set `DB_SSL=true` and provide its CA certificate through `DB_SSL_CA` (PEM contents; `\n` sequences are accepted) or `DB_SSL_CA_PATH` (a local CA file path). Keep `.env` out of source control.
 4. Install backend dependencies:
    ```powershell
    npm install
    ```
-5. Run the automated seed script to populate sample monitors, checks, and a demo user:
+5. After verifying the `.env` values point to the intended database, run the idempotent seed script. It creates any missing tables and adds demo records without deleting existing data:
    ```powershell
    npm run seed
    ```
